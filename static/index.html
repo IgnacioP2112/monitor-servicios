@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Monitor de Servicios</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:       #0a0e17;
+      --surface:  #111827;
+      --border:   #1e2d40;
+      --accent:   #00e5ff;
+      --ok:       #00e676;
+      --error:    #ff1744;
+      --warn:     #ffc400;
+      --text:     #c9d6e3;
+      --muted:    #4a5568;
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-ui:   'Syne', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      padding: 2rem;
+      background-image:
+        radial-gradient(ellipse at 10% 0%, rgba(0,229,255,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse at 90% 100%, rgba(0,230,118,0.04) 0%, transparent 60%);
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+
+    header h1 span {
+      color: var(--accent);
+    }
+
+    #last-update {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    /* ── GRID PRINCIPAL ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    /* ── TARJETA DE SITIO ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+      animation: fadeIn 0.4s ease both;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      border-radius: 10px 0 0 10px;
+    }
+
+    .card.ok::before    { background: var(--ok); }
+    .card.error::before { background: var(--error); }
+
+    .card-host {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 0.15rem 0.55rem;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    .badge-ok    { background: rgba(0,230,118,0.15); color: var(--ok); }
+    .badge-error { background: rgba(255,23,68,0.15);  color: var(--error); }
+
+    .card-meta {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .card-meta strong {
+      color: var(--text);
+    }
+
+    /* ── SECCIÓN ── */
+    section {
+      margin-bottom: 2.5rem;
+    }
+
+    section h2 {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    /* ── TABLA DE STATS ── */
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .stats-table th {
+      text-align: left;
+      padding: 0.5rem 1rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stats-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .stats-table tr:last-child td { border-bottom: none; }
+
+    .stats-table tr:hover td {
+      background: rgba(255,255,255,0.02);
+    }
+
+    /* ── BARRA DE LATENCIA ── */
+    .bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .bar-bg {
+      flex: 1;
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--ok));
+      transition: width 0.6s ease;
+    }
+
+    .bar-val {
+      width: 52px;
+      text-align: right;
+      color: var(--accent);
+      font-size: 0.78rem;
+    }
+
+    /* ── ALERTAS ── */
+    .alert-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .alert-item {
+      background: rgba(255,23,68,0.06);
+      border: 1px solid rgba(255,23,68,0.2);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      display: flex;
+      gap: 1.5rem;
+      animation: fadeIn 0.3s ease both;
+    }
+
+    .alert-time { color: var(--muted); white-space: nowrap; }
+    .alert-url  { color: var(--error); }
+
+    .no-alerts {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--ok);
+      padding: 0.75rem 0;
+    }
+
+    /* ── LATENCY CHART ── */
+    .chart-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+
+    canvas#latencyChart {
+      width: 100% !important;
+      max-height: 220px;
+    }
+
+    /* ── ANIMACIONES ── */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── LOADER ── */
+    .loader {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 1rem 0;
+    }
+
+    .pulse {
+      display: inline-block;
+      width: 7px; height: 7px;
+      background: var(--ok);
+      border-radius: 50%;
+      margin-right: 0.4rem;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Monitor de <span>Servicios</span></h1>
+    <div id="last-update">cargando...</div>
+  </header>
+
+  <!-- ESTADO ACTUAL -->
+  <section>
+    <h2>Estado actual</h2>
+    <div class="grid" id="status-grid">
+      <div class="loader">cargando sitios...</div>
+    </div>
+  </section>
+
+  <!-- GRÁFICO DE LATENCIA -->
+  <section>
+    <h2>Latencia en el tiempo</h2>
+    <div class="chart-wrap">
+      <canvas id="latencyChart"></canvas>
+    </div>
+  </section>
+
+  <!-- ESTADÍSTICAS -->
+  <section>
+    <h2>Estadísticas</h2>
+    <table class="stats-table">
+      <thead>
+        <tr>
+          <th>Sitio</th>
+          <th>Mediciones</th>
+          <th>Promedio</th>
+          <th>Mínima</th>
+          <th>Máxima</th>
+          <th>Barra</th>
+        </tr>
+      </thead>
+      <tbody id="stats-body">
+        <tr><td colspan="6" class="loader">cargando estadísticas...</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ALERTAS -->
+  <section>
+    <h2>Alertas SERVICE DOWN</h2>
+    <div class="alert-list" id="alertas-list">
+      <div class="loader">cargando alertas...</div>
+    </div>
+  </section>
+
+  <!-- Chart.js desde CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+  <script>
+    // ── CONSTANTES ──────────────────────────────────────────────────────────
+
+    const API = "http://localhost:8000";
+
+    const COLORS = [
+      "#00e5ff", "#00e676", "#ffc400",
+      "#ff6d00", "#d500f9", "#ff1744"
+    ];
+
+    // ── HELPERS ──────────────────────────────────────────────────────────────
+
+    function hostName(url) {
+      try { return new URL(url).hostname; }
+      catch { return url; }
+    }
+
+    function now() {
+      return new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    // ── FETCH STATUS ─────────────────────────────────────────────────────────
+
+    async function loadStatus() {
+      const res  = await fetch(`${API}/status`);
+      const data = await res.json();
+      const grid = document.getElementById("status-grid");
+
+      grid.innerHTML = data.map(site => `
+        <div class="card ${site.estado === 'OK' ? 'ok' : 'error'}">
+          <div class="card-host">${hostName(site.url)}</div>
+          <span class="card-badge ${site.estado === 'OK' ? 'badge-ok' : 'badge-error'}">
+            ${site.estado}
+          </span>
+          <div class="card-meta">
+            <div>HTTP <strong>${site.status ?? '—'}</strong></div>
+            <div>Latencia <strong>${site.latencia != null ? site.latencia + 's' : '—'}</strong></div>
+            <div>Última vez <strong>${site.timestamp.slice(11, 19)}</strong></div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // ── FETCH STATS ──────────────────────────────────────────────────────────
+
+    async function loadStats() {
+      const res  = await fetch(`${API}/stats`);
+      const data = await res.json();
+      const body = document.getElementById("stats-body");
+
+      const maxPromedio = Math.max(...data.map(s => s.promedio));
+
+      body.innerHTML = data.map(site => {
+        const pct = ((site.promedio / maxPromedio) * 100).toFixed(1);
+        return `
+          <tr>
+            <td>${hostName(site.url)}</td>
+            <td>${site.mediciones}</td>
+            <td>${site.promedio}s</td>
+            <td>${site.minima}s</td>
+            <td>${site.maxima}s</td>
+            <td>
+              <div class="bar-wrap">
+                <div class="bar-bg">
+                  <div class="bar-fill" style="width:${pct}%"></div>
+                </div>
+                <span class="bar-val">${site.promedio}s</span>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    // ── FETCH ALERTAS ─────────────────────────────────────────────────────────
+
+    async function loadAlertas() {
+      const res  = await fetch(`${API}/alertas`);
+      const data = await res.json();
+      const list = document.getElementById("alertas-list");
+
+      if (data.length === 0) {
+        list.innerHTML = `<div class="no-alerts"><span class="pulse"></span>Sin alertas registradas</div>`;
+        return;
+      }
+
+      list.innerHTML = data.slice(-10).reverse().map(a => `
+        <div class="alert-item">
+          <span class="alert-time">${a.timestamp}</span>
+          <span class="alert-url">${hostName(a.url)}</span>
+          <span>SERVICE DOWN</span>
+        </div>
+      `).join("");
+    }
+
+    // ── FETCH LATENCIA + CHART ────────────────────────────────────────────────
+
+    let chartInstance = null;
+
+    async function loadChart() {
+  const res  = await fetch(`${API}/latencia`);
+  const data = await res.json();
+
+  // Extraemos todos los timestamps únicos, ordenados
+  const todosTimestamps = [...new Set(data.map(r => r.timestamp))].sort();
+
+  // Etiquetas del eje X: solo hora:minuto:segundo
+  const labels = todosTimestamps.map(t => t.slice(11, 19));
+
+  // Agrupamos por URL: para cada timestamp, buscamos la latencia
+  // Si ese sitio no tiene dato en ese timestamp, ponemos null
+  const grupos = {};
+  data.forEach(r => {
+    if (!grupos[r.url]) grupos[r.url] = {};
+    grupos[r.url][r.timestamp] = r.latencia;
+  });
+
+  const datasets = Object.entries(grupos).map(([url, puntos], i) => ({
+    label:           hostName(url),
+    // Mapeamos cada timestamp del eje X al valor de este sitio (o null)
+    data:            todosTimestamps.map(t => puntos[t] ?? null),
+    borderColor:     COLORS[i % COLORS.length],
+    backgroundColor: COLORS[i % COLORS.length] + "22",
+    borderWidth:     2,
+    pointRadius:     3,
+    tension:         0.3,
+    fill:            false,
+    spanGaps:        false, // no unir puntos si hay null en el medio
+  }));
+
+  const ctx = document.getElementById("latencyChart").getContext("2d");
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          ticks: {
+            color: "#4a5568",
+            font: { family: "Share Tech Mono", size: 10 },
+            maxTicksLimit: 10,
+            autoSkip: true
+          },
+          grid: { color: "#1e2d40" }
+        },
+        y: {
+          ticks: {
+            color: "#4a5568",
+            font: { family: "Share Tech Mono", size: 10 },
+            callback: v => v + "s"
+          },
+          grid: { color: "#1e2d40" }
+        }
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: "#c9d6e3",
+            font: { family: "Syne", size: 11 }
+          }
+        },
+        tooltip: {
+          backgroundColor: "#111827",
+          borderColor: "#1e2d40",
+          borderWidth: 1,
+          titleFont: { family: "Share Tech Mono" },
+          bodyFont:  { family: "Share Tech Mono" },
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}s`
+          }
+        }
+      }
+    }
+  });
+}
+
+    // ── ACTUALIZAR TIMESTAMP ──────────────────────────────────────────────────
+
+    function updateTimestamp() {
+      document.getElementById("last-update").innerHTML =
+        `<span class="pulse"></span>Actualizado ${now()}`;
+    }
+
+    // ── CARGA INICIAL Y REFRESCO AUTOMÁTICO ───────────────────────────────────
+
+    async function loadAll() {
+      await Promise.all([
+        loadStatus(),
+        loadStats(),
+        loadAlertas(),
+        loadChart(),
+      ]);
+      updateTimestamp();
+    }
+
+    loadAll();
+
+    // Refresca cada 30 segundos automáticamente
+    setInterval(loadAll, 30_000);
+  </script>
+</body>
+</html>
