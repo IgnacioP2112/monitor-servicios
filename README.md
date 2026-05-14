@@ -1,5 +1,5 @@
 # Monitor de Servicios Web
-# Ignacio Pérez - Freebird2112
+# Ignacio Pérez
 
 
 Sistema de monitoreo de disponibilidad de servicios web construido en Python. Consulta sitios periódicamente, mide tiempos de respuesta, detecta caídas y expone los datos a través de una API REST con dashboard en tiempo real.
